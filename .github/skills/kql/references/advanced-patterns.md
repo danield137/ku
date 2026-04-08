@@ -1,6 +1,6 @@
 # Advanced KQL Patterns
 
-Reference for specialized KQL features: graph queries, vector similarity, geospatial operations, time series, and external data. Consult this when a challenge requires these advanced capabilities.
+Reference for specialized KQL features: graph queries, vector similarity, geospatial operations, time series, and external data. Consult this when a task requires these capabilities.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ Reference for specialized KQL features: graph queries, vector similarity, geospa
 
 ## 1. Graph Queries
 
-Used successfully in C3 Case 9 (15 queries, 0 errors after initial learning curve). KQL's graph model requires building a graph from node/edge tables, then traversing with `graph-match`.
+KQL's graph model requires building a graph from node/edge tables, then traversing with `graph-match`.
 
 ### Building a graph
 
@@ -44,7 +44,7 @@ graph(nodes, edges)
 
 ### Pre-filtering edges (the key pattern)
 
-The agent learned this through trial and error: **filter edges BEFORE building the graph**, not during traversal. Edge properties are not accessible on variable-length paths during `graph-match`.
+Important: **filter edges BEFORE building the graph**, not during traversal. Edge properties are not accessible on variable-length paths during `graph-match`.
 
 ```kql
 // ❌ WRONG — can't access properties on variable-length edge
@@ -93,7 +93,7 @@ KQL has native vector operations — **don't export to Python** for cosine simil
 
 ### series_cosine_similarity
 
-The most common vector operation. Used successfully in C3 Case 5.
+The most common vector operation.
 
 ```kql
 // Find the most similar items to a target vector
@@ -166,7 +166,7 @@ Vecs
     dynamic({"type":"Polygon","coordinates":[[[lon1,lat1],[lon2,lat2],...,[lon1,lat1]]]}))
 ```
 
-Note: `geo_point_in_polygon` is a **scalar function**, not a plugin. It works on free clusters. The agent mistakenly tried to `evaluate` it as a plugin — use it directly in `| where` or `| extend`.
+Note: `geo_point_in_polygon` is a **scalar function**, not a plugin. It works on free clusters. Don't try to `evaluate` it as a plugin — use it directly in `| where` or `| extend`.
 
 ### Distance calculations
 
@@ -279,7 +279,7 @@ external_csv | where col2 > 100
 ```kql
 // Gzipped CSV
 let primes = external_data(prime:long)
-  [h@'https://kustodetectiveagency.blob.core.windows.net/prime-numbers/prime-numbers.csv.gz']
+  [h@'https://yourstorage.blob.core.windows.net/prime-numbers/prime-numbers.csv.gz']
   with (ignoreFirstRecord=true);
 primes | where prime < 100000000 | summarize max(prime)
 ```
@@ -290,7 +290,7 @@ primes | where prime < 100000000 | summarize max(prime)
 
 ## 6. Stored Functions
 
-Some Kusto Detective challenges provide pre-built stored functions (e.g., `Decrypt`, `Dekrypt`, `Verify`).
+Some databases include pre-built stored functions (e.g., `Decrypt`, `Dekrypt`, `Verify`).
 
 ### Discovering stored functions
 

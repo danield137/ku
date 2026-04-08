@@ -5,9 +5,7 @@ description: "KQL language expertise for writing correct, efficient Kusto querie
 
 # KQL Mastery
 
-Everything in this skill is derived from analysis of **1,205 real KQL queries** across 50 agent sessions. The 119 errors (9.9%) fell into clear, recurring categories. Each section below maps directly to an observed failure pattern — this isn't theoretical advice, it's battle-tested.
-
-## 1. Running KQL with `ku`
+## 1.Running KQL with `ku`
 
 `ku` is the CLI for querying Azure Data Explorer clusters. Authentication uses Azure CLI (`az login`).
 
@@ -78,7 +76,7 @@ ku --cluster $CLUSTER --database $DB --query "$QUERY" --adaptive-output result.k
 
 ## 2. Dynamic Type Discipline
 
-KQL's `dynamic` type is flexible but strict in certain contexts. The agent hit this **7 times** across 5 cases — always the same pattern: using a dynamic column in `summarize by`, `order by`, or `join on` without casting.
+KQL's `dynamic` type is flexible but strict in certain contexts. A common mistake is using a dynamic column in `summarize by`, `order by`, or `join on` without casting.
 
 **The rule**: Any time you use a dynamic-typed column in `by`, `on`, or `order by`, wrap it in an explicit cast.
 
@@ -111,9 +109,9 @@ KQL's `dynamic` type is flexible but strict in certain contexts. The agent hit t
 
 ## 3. Join Patterns & Pitfalls
 
-Joins caused **14 errors** — the second-largest category. KQL joins have constraints that differ from SQL.
+KQL joins have constraints that differ from SQL.
 
-### Equality only (5 errors)
+### Equality only
 KQL join conditions support **only `==`**. No `<`, `>`, `!=`, or function calls in join predicates.
 
 ```kql
@@ -127,7 +125,7 @@ KQL join conditions support **only `==`**. No `<`, `>`, `!=`, or function calls 
 
 For range joins, pre-bin values: `| extend bin_val = bin(Value, 100)`, then join on `bin_val`.
 
-### Left/right attribute matching (9 errors)
+### Left/right attribute matching
 Both sides of a join `on` clause must reference **column entities only** — not expressions, not aggregates.
 
 ```kql
@@ -149,7 +147,7 @@ TableB | summarize dcount(JoinKey)  // → 195? OK if filtered first
 
 ## 4. Regex in KQL
 
-Two `extract_all` errors and 13 unnecessary Python fallbacks for regex work that KQL handles natively.
+KQL handles regex natively — no need for Python.
 
 ### The `extract_all` gotcha
 Unlike Python's `re.findall()`, KQL's `extract_all` **requires capturing groups** in the regex:
@@ -173,7 +171,7 @@ Unlike Python's `re.findall()`, KQL's `extract_all` **requires capturing groups*
 
 ## 5. Serialization Requirements
 
-Window functions need serialized (ordered) input. The agent hit this **2 times**.
+Window functions need serialized (ordered) input.
 
 ```kql
 // ❌ ERROR: "Function 'row_cumsum' cannot be invoked. The row set must be serialized."
@@ -190,7 +188,7 @@ Functions requiring serialization: `row_number()`, `row_cumsum()`, `prev()`, `ne
 
 ## 6. Memory-Safe Query Patterns
 
-**21 `E_LOW_MEMORY` errors** — the largest single category. All caused by scanning too much data without pre-filtering.
+The most common memory error. Caused by scanning too much data without pre-filtering.
 
 ### The progression of safety
 ```
@@ -231,7 +229,7 @@ A join or aggregation produced too many output rows. Check join cardinality — 
 
 ## 7. Result Size Discipline
 
-25 queries returned results so large they fragmented the agent's reasoning (results got written to temp files, requiring extra tool calls to read). Prevention:
+Large results slow down analysis. Prevention:
 
 | Query type | Safeguard |
 |-----------|-----------|
@@ -247,7 +245,7 @@ A join or aggregation produced too many output rows. Check join cardinality — 
 
 ## 8. String Comparison Strictness
 
-4 errors from KQL requiring explicit casts when comparing computed string values — even when both sides are already strings.
+KQL sometimes requires explicit casts when comparing computed string values — even when both sides are already strings.
 
 ```kql
 // ❌ ERROR: "Cannot compare values of types string and string. Try adding explicit casts"
@@ -259,9 +257,9 @@ A join or aggregation produced too many output rows. Check join cardinality — 
 
 This is most common with computed values from `geo_point_to_s2cell()`, `hash()`, and `strcat()` comparisons. When in doubt, cast with `tostring()`.
 
-## 9. Advanced Functions — Don't Reinvent the Wheel
+## 9. Advanced Functions
 
-The agent fell back to Python **34 times** for operations KQL handles natively. Before writing Python:
+KQL handles these natively — no need for Python:
 
 ### Vector similarity
 ```kql
@@ -324,7 +322,7 @@ When you encounter an error, look it up here before retrying:
 
 ## 11. Datetime Pitfalls
 
-Datetime operations caused the highest retry rates in our experiments — agents get the literal syntax wrong, then cascade into completely different approaches instead of fixing the small error.
+Datetime literals are a common source of errors. A wrong literal format can cascade into completely different approaches instead of fixing the small issue.
 
 ### Literal format
 ```kql
@@ -372,7 +370,7 @@ Datetime operations caused the highest retry rates in our experiments — agents
 
 ## 12. Operator Naming & Equality
 
-KQL has subtle differences from SQL syntax that frequently trip up agents.
+KQL has subtle differences from SQL syntax.
 
 ### Equality operators
 ```kql
@@ -402,9 +400,9 @@ Both `sort by` and `order by` work identically in KQL — they are aliases. Use 
 | where Message endswith ".log"
 ```
 
-## 13. The Strategy Cascade Trap
+## 13. Error Recovery Strategy
 
-Our experiments show that when a first KQL query fails, agents often abandon their entire approach and try something completely different — leading to 3-5x token cost. The correct response is almost always to **fix the specific error**, not change strategy.
+When a first KQL query fails, the temptation is to abandon the entire approach and try something completely different. The correct response is almost always to **fix the specific error**, not change strategy.
 
 ### The pattern to avoid
 ```

@@ -1,32 +1,32 @@
 # Error Recovery Reference
 
-Complete mapping of every KQL error pattern observed across 1,205 queries (119 errors). For each error: the exact message, a real query that triggered it, and the fix.
+Complete mapping of common KQL error patterns. For each error: the exact message, a real query that triggered it, and the fix.
 
 ## Table of Contents
 
-1. [E_LOW_MEMORY_CONDITION](#1-e_low_memory_condition-21-errors)
-2. [Join Errors](#2-join-errors-14-errors)
-3. [Network / Transient](#3-network--transient-7-errors)
-4. [Dynamic Type Errors](#4-dynamic-type-errors-7-errors)
-5. [Unresolved Names](#5-unresolved-names-28-errors)
-6. [Syntax Errors](#6-syntax-errors-5-errors)
-7. [String Comparison](#7-string-comparison-4-errors)
-8. [extract_all Regex Groups](#8-extract_all-regex-groups-2-errors)
-9. [Serialization Required](#9-serialization-required-2-errors)
-10. [Missing Plugins](#10-missing-plugins-2-errors)
-11. [graph-match Syntax](#11-graph-match-syntax-2-errors)
-12. [E_RUNAWAY_QUERY](#12-e_runaway_query-1-error)
+1. [E_LOW_MEMORY_CONDITION](#1-e_low_memory_condition)
+2. [Join Errors](#2-join-errors)
+3. [Network / Transient](#3-network--transient)
+4. [Dynamic Type Errors](#4-dynamic-type-errors)
+5. [Unresolved Names](#5-unresolved-names)
+6. [Syntax Errors](#6-syntax-errors)
+7. [String Comparison](#7-string-comparison)
+8. [extract_all Regex Groups](#8-extract_all-regex-groups)
+9. [Serialization Required](#9-serialization-required)
+10. [Missing Plugins](#10-missing-plugins)
+11. [graph-match Syntax](#11-graph-match-syntax)
+12. [E_RUNAWAY_QUERY](#12-e_runaway_query)
 
 ---
 
-## 1. E_LOW_MEMORY_CONDITION (21 errors)
+## 1. E_LOW_MEMORY_CONDITION
 
 **Error message**: `Query execution lacks memory resources to complete (80DA0007): Partial query failure: Low memory condition (E_LOW_MEMORY_CONDITION)`
 
 ### Pattern A: Unfiltered aggregation on large table
 
 ```kql
-// ❌ TRIGGERED ERROR — C1 Case 1: 24M rows, no pre-filter
+// ❌ TRIGGERED ERROR — 24M rows, no pre-filter
 Consumption
 | summarize dcount(Consumed), count() by Timestamp, HouseholdId, MeterType
 | where dcount_Consumed > 1
@@ -41,7 +41,7 @@ Consumption
 ### Pattern B: Join explosion
 
 ```kql
-// ❌ TRIGGERED ERROR — C3 Case 4: 25K IPs × 195 polygons
+// ❌ TRIGGERED ERROR — 25K IPs × 195 polygons
 ip_locations
 | join kind=inner (Cities | where HackersCount >= 256) on $left.CityName == $right.CityName
 
@@ -71,9 +71,9 @@ Logs
 
 ---
 
-## 2. Join Errors (14 errors)
+## 2. Join Errors
 
-### 2a. Left/right attribute mismatch (9 errors)
+### 2a. Left/right attribute mismatch
 
 **Error message**: `join: for each left attribute, right attribute should be selected.`
 
@@ -94,12 +94,12 @@ TableA
 | join kind=inner (TableB | extend NameLower = tolower(Name)) on $left.Id == $right.NameLower
 ```
 
-### 2b. Equality only (5 errors)
+### 2b. Equality only
 
 **Error message**: `join: Only equality is allowed in this context.`
 
 ```kql
-// ❌ TRIGGERED ERROR — C3 Case 4: geo-distance in join predicate
+// ❌ TRIGGERED ERROR — geo-distance in join predicate
 TableA | join TableB on geo_distance_2points(a.Lat, a.Lon, b.Lat, b.Lon) < 1000
 
 // ✅ FIX — pre-bucket into spatial cells
@@ -122,11 +122,11 @@ Sales
 
 ---
 
-## 3. Network / Transient (7 errors)
+## 3. Network / Transient
 
 **Error message**: `Failed to process network request for the endpoint: https://kvc4bf3...`
 
-Cause: 6 of 7 had corrupted cluster URIs — Georgian characters injected by a Playwright encoding bug. 1 was a genuine network timeout.
+Cause: Corrupted cluster URIs or genuine network timeouts.
 
 **Recovery strategy**: 
 1. Verify the cluster URI is clean ASCII (no Unicode characters)
@@ -135,20 +135,20 @@ Cause: 6 of 7 had corrupted cluster URIs — Georgian characters injected by a P
 
 ---
 
-## 4. Dynamic Type Errors (7 errors)
+## 4. Dynamic Type Errors
 
-### 4a. Summarize by dynamic (2 errors)
+### 4a. Summarize by dynamic
 
 **Error message**: `Summarize group key 'Area' is of a 'dynamic' type. Please use an explicit cast`
 
 ```kql
-// ❌ — C3 Case 4
+// ❌
 | summarize count() by Area
 // ✅
 | summarize count() by tostring(Area)
 ```
 
-### 4b. Order by dynamic (2 errors)
+### 4b. Order by dynamic
 
 **Error message**: `order operator: key can't be of dynamic type`
 
@@ -159,7 +159,7 @@ Cause: 6 of 7 had corrupted cluster URIs — Georgian characters injected by a P
 | order by todouble(Properties.Score) desc
 ```
 
-### 4c. Join on dynamic (3 errors)
+### 4c. Join on dynamic
 
 **Error message**: `join key 'Area' is of a 'dynamic' type. Please use an explicit cast`
 
@@ -173,31 +173,31 @@ Cause: 6 of 7 had corrupted cluster URIs — Georgian characters injected by a P
 
 ---
 
-## 5. Unresolved Names (28 errors)
+## 5. Unresolved Names
 
 **Error message**: `Failed to resolve column or scalar expression named 'X'` or `Failed to resolve entity 'X'`
 
 ### Common causes
 
-| Cause | Count | Example |
-|-------|-------|---------|
-| Invented column name | 11 | `NewVIN` (doesn't exist; actual is `VIN`) |
-| Wrong table | 6 | Queried `Traffic` instead of `CarsTraffic` |
-| Not-yet-ingested table | 5 | Table from different challenge phase |
-| Typo | 4 | `EstimatedHackersCount` vs actual column name |
-| Let-variable scope | 2 | Variable defined in different query |
+| Cause | Example |
+|-------|---------|
+| Invented column name | `NewVIN` (doesn't exist; actual is `VIN`) |
+| Wrong table | Queried `Traffic` instead of `CarsTraffic` |
+| Table not yet ingested or in different database | Table not found |
+| Typo | `EstimatedHackersCount` vs actual column name |
+| Let-variable scope | Variable defined in different query |
 
 **Recovery strategy**:
 1. Run `.show table T schema` via `ku` to check exact column names
 2. Check exact table and column names — KQL is case-sensitive for column names
 3. If querying a table that should exist but doesn't, check which database you're connected to
-4. 89% of unresolved names are matchable against the cached schema — look for similar names
+4. Most unresolved names are matchable against the cached schema — look for similar names
 
 ---
 
-## 6. Syntax Errors (5 errors)
+## 6. Syntax Errors
 
-### 6a. Management command in query pipe (2 errors)
+### 6a. Management command in query pipe
 
 **Error message**: `Unexpected control command`
 
@@ -210,7 +210,7 @@ Cause: 6 of 7 had corrupted cluster URIs — Georgian characters injected by a P
 // Step 2: ku --query "TableName | take 5" --adaptive-output sample.kdf
 ```
 
-### 6b. Reserved words as identifiers (1 error)
+### 6b. Reserved words as identifiers
 
 **Error message**: `The name 'shards' needs to be bracketed as ['shards']`
 
@@ -224,7 +224,7 @@ let ['shards'] = ...
 let shard_info = ...
 ```
 
-### 6c. Syntax: Expected comma (2 errors)
+### 6c. Syntax: Expected comma
 
 Various syntax issues, usually from mixing SQL syntax into KQL:
 
@@ -238,14 +238,14 @@ Table | where x == 1
 
 ---
 
-## 7. String Comparison (4 errors)
+## 7. String Comparison
 
 **Error message**: `Cannot compare values of types string and string. Try adding explicit casts`
 
 Despite both sides being strings, KQL sometimes requires explicit casts for computed values.
 
 ```kql
-// ❌ — C1 Case 8: S2 cell comparison
+// ❌ — S2 cell comparison
 Runs
 | extend startCell = geo_point_to_s2cell(StartLon, StartLat, 16)
 | join kind=inner (...) on startCell
@@ -260,7 +260,7 @@ This occurs most often with `geo_point_to_s2cell()`, `hash()`, and `strcat()` re
 
 ---
 
-## 8. extract_all Regex Groups (2 errors)
+## 8. extract_all Regex Groups
 
 **Error message**: `extractall(): argument 2 must be a valid regex with [1..16] matching groups`
 
@@ -276,12 +276,12 @@ Unlike Python's `re.findall()`, KQL's `extract_all` requires at least one `()` g
 
 ---
 
-## 9. Serialization Required (2 errors)
+## 9. Serialization Required
 
 **Error message**: `Function 'row_cumsum' cannot be invoked. The row set must be serialized.`
 
 ```kql
-// ❌ — C3 Case 4
+// ❌
 ChatServerLogs
 | summarize Online = sum(Direction) by bin(Timestamp, 5m)
 | extend CumulativeOnline = row_cumsum(Online)
@@ -297,7 +297,7 @@ Affected functions: `row_number()`, `row_cumsum()`, `prev()`, `next()`, `row_win
 
 ---
 
-## 10. Missing Plugins (2 errors)
+## 10. Missing Plugins
 
 **Error message**: `plugin 'geo_point_in_polygon': plugin doesn't exist.`
 
@@ -312,12 +312,12 @@ Some KQL functions are plugins that may not be enabled on free-tier clusters.
 
 ---
 
-## 11. graph-match Syntax (2 errors)
+## 11. graph-match Syntax
 
 **Error message**: `graph-match operator: variable edge 'path' edges don't have property 'IsVulnerable'`
 
 ```kql
-// ❌ — C1 Case 9: property access on variable-length edge
+// ❌ — property access on variable-length edge
 graph-match (src)-[path*1..3]->(dst)
   where path.IsVulnerable == true
 
@@ -328,16 +328,16 @@ graph(Nodes, edges)
   project src.Name, dst.Name
 ```
 
-The agent failed on this twice in Challenge 1, then mastered it by Challenge 3 (15 queries, 0 errors) — by pre-filtering edges before graph construction.
+The fix is to pre-filter edges before graph construction.
 
 ---
 
-## 12. E_RUNAWAY_QUERY (1 error)
+## 12. E_RUNAWAY_QUERY
 
 **Error message**: `Runaway query (E_RUNAWAY_QUERY): Join output block exceeded memory budget`
 
 ```kql
-// ❌ — C3 Case 4: 25K × 195 unconstrained cross-join
+// ❌ — 25K × 195 unconstrained cross-join
 ip_locs | join kind=inner (Cities | where EstimatedHackersCount >= 256) on ...
 
 // ✅ — check cardinality first, pre-filter aggressively

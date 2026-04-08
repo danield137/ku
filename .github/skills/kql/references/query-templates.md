@@ -1,6 +1,6 @@
 # KQL Query Templates
 
-Reusable query patterns for common data investigation operations. Copy and adapt these — they're tested against real Kusto Detective Agency data.
+Reusable query patterns for common data investigation operations. Copy and adapt these.
 
 ## Table of Contents
 
