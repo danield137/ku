@@ -1,6 +1,6 @@
 [package]
 name = "kusto-query"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Slim Kusto CLI — query Azure Data Explorer and save results as KDF files"
 license = "MIT"
