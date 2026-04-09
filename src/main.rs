@@ -85,20 +85,13 @@ fn main() {
         if result.row_count <= head_n {
             // Small result — print all inline, no file
             print!("{}", preview);
-            eprintln!(
-                "({} rows)",
-                result.row_count,
-            );
+            eprintln!("({} rows)", result.row_count,);
         } else {
             // Large result — print preview + save file
             print!("{}", preview);
             match result.write_kdf(std::path::Path::new(&adaptive_output)) {
                 Ok(()) => {
-                    eprintln!(
-                        "-> {} ({} rows)",
-                        adaptive_output,
-                        result.row_count,
-                    );
+                    eprintln!("-> {} ({} rows)", adaptive_output, result.row_count,);
                 }
                 Err(e) => {
                     eprintln!("Error writing '{}': {}", adaptive_output, e);
@@ -115,11 +108,7 @@ fn main() {
                     let (preview, _) = result.format_preview(head_n, pretty);
                     print!("{}", preview);
                 }
-                eprintln!(
-                    "-> {} ({} rows)",
-                    output,
-                    result.row_count,
-                );
+                eprintln!("-> {} ({} rows)", output, result.row_count,);
             }
             Err(e) => {
                 eprintln!("Error writing '{}': {}", output, e);
@@ -156,6 +145,3 @@ EXAMPLES:
 "#
     );
 }
-
-
-

@@ -13,7 +13,7 @@ pub struct QueryResult {
     pub row_count: usize,
     pub columns: Vec<(String, String)>, // (name, kusto_type)
     pub rows: Vec<Vec<Value>>,          // raw row data
-    frame: Value,                        // the full PrimaryResult DataTable frame
+    frame: Value,                       // the full PrimaryResult DataTable frame
 }
 
 impl QueryResult {
@@ -194,8 +194,8 @@ pub fn build_query_request(
 
 /// Parse a Kusto V2 JSON response and extract the PrimaryResult.
 pub fn parse_v2_response(reader: impl Read) -> Result<QueryResult, String> {
-    let frames: Vec<Value> =
-        serde_json::from_reader(reader).map_err(|e| format!("Failed to parse V2 response: {}", e))?;
+    let frames: Vec<Value> = serde_json::from_reader(reader)
+        .map_err(|e| format!("Failed to parse V2 response: {}", e))?;
 
     // Check for errors in DataSetCompletion
     for frame in &frames {
@@ -224,9 +224,17 @@ pub fn parse_v2_response(reader: impl Read) -> Result<QueryResult, String> {
     let columns: Vec<(String, String)> = columns_arr
         .iter()
         .map(|c| {
-            let name = c.get("ColumnName").and_then(|n| n.as_str()).unwrap_or("?").to_string();
-            let col_type = c.get("ColumnType").or_else(|| c.get("DataType"))
-                .and_then(|t| t.as_str()).unwrap_or("string").to_string();
+            let name = c
+                .get("ColumnName")
+                .and_then(|n| n.as_str())
+                .unwrap_or("?")
+                .to_string();
+            let col_type = c
+                .get("ColumnType")
+                .or_else(|| c.get("DataType"))
+                .and_then(|t| t.as_str())
+                .unwrap_or("string")
+                .to_string();
             (name, col_type)
         })
         .collect();
@@ -260,18 +268,41 @@ pub fn v2_response_to_kdf(reader: impl Read, output: &Path) -> Result<QueryMeta,
 pub fn get_az_cli_token(cluster: &str) -> Result<String, String> {
     let output = if cfg!(windows) {
         std::process::Command::new("cmd")
-            .args(["/c", "az", "account", "get-access-token", "--resource", cluster, "--query", "accessToken", "-o", "tsv"])
+            .args([
+                "/c",
+                "az",
+                "account",
+                "get-access-token",
+                "--resource",
+                cluster,
+                "--query",
+                "accessToken",
+                "-o",
+                "tsv",
+            ])
             .output()
     } else {
         std::process::Command::new("az")
-            .args(["account", "get-access-token", "--resource", cluster, "--query", "accessToken", "-o", "tsv"])
+            .args([
+                "account",
+                "get-access-token",
+                "--resource",
+                cluster,
+                "--query",
+                "accessToken",
+                "-o",
+                "tsv",
+            ])
             .output()
     }
     .map_err(|e| format!("Failed to run 'az': {} (is Azure CLI installed?)", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("az account get-access-token failed: {}", stderr.trim()));
+        return Err(format!(
+            "az account get-access-token failed: {}",
+            stderr.trim()
+        ));
     }
 
     let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -299,16 +330,27 @@ pub fn run_query(cluster: &str, database: &str, query: &str) -> Result<QueryResu
     let status = response.status();
     if !status.is_success() {
         let body = response.text().unwrap_or_default();
-        return Err(format!("Kusto returned HTTP {}: {}", status, &body[..body.len().min(500)]));
+        return Err(format!(
+            "Kusto returned HTTP {}: {}",
+            status,
+            &body[..body.len().min(500)]
+        ));
     }
 
-    let bytes = response.bytes().map_err(|e| format!("Failed to read response: {}", e))?;
+    let bytes = response
+        .bytes()
+        .map_err(|e| format!("Failed to read response: {}", e))?;
     parse_v2_response(bytes.as_ref())
 }
 
 /// Execute a KQL query and save results as a KDF file.
 /// (Backward-compatible wrapper.)
-pub fn execute_query(cluster: &str, database: &str, query: &str, output: &Path) -> Result<QueryMeta, String> {
+pub fn execute_query(
+    cluster: &str,
+    database: &str,
+    query: &str,
+    output: &Path,
+) -> Result<QueryMeta, String> {
     let result = run_query(cluster, database, query)?;
     result.write_kdf(output)?;
     Ok(result.meta())

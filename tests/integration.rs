@@ -74,7 +74,10 @@ fn error_response_returns_err() {
 
     let kdf_path = tmp_path("error.kdf");
     let result = ku::v2_response_to_kdf(error_response.as_bytes(), &kdf_path);
-    assert!(result.is_err(), "should return error when HasErrors is true");
+    assert!(
+        result.is_err(),
+        "should return error when HasErrors is true"
+    );
 }
 
 #[test]
@@ -171,7 +174,12 @@ fn adaptive_small_result_no_file() {
 #[test]
 fn adaptive_large_result_writes_file() {
     let rows: Vec<Vec<serde_json::Value>> = (0..10)
-        .map(|i| vec![serde_json::json!(i), serde_json::json!(format!("row_{}", i))])
+        .map(|i| {
+            vec![
+                serde_json::json!(i),
+                serde_json::json!(format!("row_{}", i)),
+            ]
+        })
         .collect();
     let response = make_v2_response(&[("id", "long"), ("name", "string")], &rows);
 
@@ -194,9 +202,8 @@ fn adaptive_large_result_writes_file() {
 
 #[test]
 fn head_with_output_prints_preview() {
-    let rows: Vec<Vec<serde_json::Value>> = (0..5)
-        .map(|i| vec![serde_json::json!(i * 100)])
-        .collect();
+    let rows: Vec<Vec<serde_json::Value>> =
+        (0..5).map(|i| vec![serde_json::json!(i * 100)]).collect();
     let response = make_v2_response(&[("val", "long")], &rows);
 
     let result = ku::parse_v2_response(response.as_bytes()).unwrap();
@@ -232,4 +239,3 @@ fn head_shows_all_when_fewer() {
     assert!(preview.contains("Bob"));
     assert!(!preview.contains("..."));
 }
-
