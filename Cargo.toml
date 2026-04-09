@@ -1,5 +1,5 @@
 [package]
-name = "ku"
+name = "kusto-query"
 version = "0.1.0"
 edition = "2021"
 description = "Slim Kusto CLI — query Azure Data Explorer and save results as KDF files"
@@ -9,6 +9,14 @@ homepage = "https://github.com/danield137/ku"
 readme = "README.md"
 keywords = ["kusto", "cli", "azure", "kql", "adx"]
 categories = ["command-line-utilities"]
+
+[[bin]]
+name = "ku"
+path = "src/main.rs"
+
+[lib]
+name = "ku"
+path = "src/lib.rs"
 
 [dependencies]
 reqwest = { version = "0.12", features = ["json", "blocking"] }

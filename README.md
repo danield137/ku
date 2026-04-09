@@ -9,7 +9,7 @@ No Kusto SDK. No heavy dependencies. Just HTTP + JSON + Azure CLI auth.
 ### From crates.io (requires Rust toolchain)
 
 ```bash
-cargo install ku
+cargo install kusto-query
 ```
 
 ### From source
