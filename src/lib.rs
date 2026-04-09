@@ -199,10 +199,10 @@ pub fn parse_v2_response(reader: impl Read) -> Result<QueryResult, String> {
 
     // Check for errors in DataSetCompletion
     for frame in &frames {
-        if frame.get("FrameType").and_then(|f| f.as_str()) == Some("DataSetCompletion") {
-            if frame.get("HasErrors").and_then(|h| h.as_bool()) == Some(true) {
-                return Err("Query returned errors (HasErrors: true)".into());
-            }
+        if frame.get("FrameType").and_then(|f| f.as_str()) == Some("DataSetCompletion")
+            && frame.get("HasErrors").and_then(|h| h.as_bool()) == Some(true)
+        {
+            return Err("Query returned errors (HasErrors: true)".into());
         }
     }
 
